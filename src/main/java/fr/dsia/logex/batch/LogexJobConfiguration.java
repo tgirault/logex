@@ -19,12 +19,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 
 import fr.dsia.logex.batch.processor.RequestItemProcessor;
-import fr.dsia.logex.model.RequestDto;
+import fr.dsia.logex.model.CsvLineDto;
+import fr.dsia.logex.model.LogLineDto;
 
 @Configuration
 @EnableBatchProcessing
@@ -48,7 +48,7 @@ public class LogexJobConfiguration {
 
 	@Bean
 	public Step step1() {
-		return stepBuilderFactory.get("step1").<RequestDto, RequestDto>chunk(10) //
+		return stepBuilderFactory.get("step1").<LogLineDto, CsvLineDto>chunk(10) //
 				.reader(logFileItemReader()) //
 				.processor(requestProcessor()) //
 				.writer(csvFileWriter()) //
@@ -56,24 +56,24 @@ public class LogexJobConfiguration {
 	}
 
 	@Bean
-	FlatFileItemReader<RequestDto> logFileItemReader() {
-		FlatFileItemReader<RequestDto> logfileReader = new FlatFileItemReader<>();
+	FlatFileItemReader<LogLineDto> logFileItemReader() {
+		FlatFileItemReader<LogLineDto> logfileReader = new FlatFileItemReader<>();
 		logfileReader.setResource(inputFile);
 		logfileReader.setLinesToSkip(1);
 
-		LineMapper<RequestDto> studentLineMapper = createRequestLineMapper();
+		LineMapper<LogLineDto> studentLineMapper = createRequestLineMapper();
 		logfileReader.setLineMapper(studentLineMapper);
 
 		return logfileReader;
 	}
 
-	private LineMapper<RequestDto> createRequestLineMapper() {
-		DefaultLineMapper<RequestDto> requestLineMapper = new DefaultLineMapper<>();
+	private LineMapper<LogLineDto> createRequestLineMapper() {
+		DefaultLineMapper<LogLineDto> requestLineMapper = new DefaultLineMapper<>();
 
 		LineTokenizer requestLineTokenizer = createRequestLineTokenizer();
 		requestLineMapper.setLineTokenizer(requestLineTokenizer);
 
-		FieldSetMapper<RequestDto> studentInformationMapper = createStudentInformationMapper();
+		FieldSetMapper<LogLineDto> studentInformationMapper = createStudentInformationMapper();
 		requestLineMapper.setFieldSetMapper(studentInformationMapper);
 
 		return requestLineMapper;
@@ -82,13 +82,13 @@ public class LogexJobConfiguration {
 	private LineTokenizer createRequestLineTokenizer() {
 		DelimitedLineTokenizer studentLineTokenizer = new DelimitedLineTokenizer();
 		studentLineTokenizer.setDelimiter(" - ");
-		studentLineTokenizer.setNames(new String[] { "date", "info" });
+		studentLineTokenizer.setNames(new String[] { "date", "headers" });
 		return studentLineTokenizer;
 	}
 
-	private FieldSetMapper<RequestDto> createStudentInformationMapper() {
-		BeanWrapperFieldSetMapper<RequestDto> requestInformationMapper = new BeanWrapperFieldSetMapper<>();
-		requestInformationMapper.setTargetType(RequestDto.class);
+	private FieldSetMapper<LogLineDto> createStudentInformationMapper() {
+		BeanWrapperFieldSetMapper<LogLineDto> requestInformationMapper = new BeanWrapperFieldSetMapper<>();
+		requestInformationMapper.setTargetType(LogLineDto.class);
 		return requestInformationMapper;
 	}
 
@@ -98,16 +98,16 @@ public class LogexJobConfiguration {
 	}
 
 	@Bean
-	public FlatFileItemWriter<RequestDto> csvFileWriter() {
-		FlatFileItemWriter<RequestDto> writer = new FlatFileItemWriter<>();
+	public FlatFileItemWriter<CsvLineDto> csvFileWriter() {
+		FlatFileItemWriter<CsvLineDto> writer = new FlatFileItemWriter<>();
 		writer.setResource(outputFile);
-		writer.setAppendAllowed(true);
-		writer.setLineAggregator(new DelimitedLineAggregator<RequestDto>() {
+		writer.setAppendAllowed(false);
+		writer.setLineAggregator(new DelimitedLineAggregator<CsvLineDto>() {
 			{
-				setDelimiter(",");
-				setFieldExtractor(new BeanWrapperFieldExtractor<RequestDto>() {
+				setDelimiter(";");
+				setFieldExtractor(new BeanWrapperFieldExtractor<CsvLineDto>() {
 					{
-						setNames(new String[] { "date", "info" });
+						setNames(new String[] { "requestDateTime", "responseDateTime", "duration", "status", "params", "uri" });
 					}
 				});
 			}

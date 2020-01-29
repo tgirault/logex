@@ -7,6 +7,7 @@ import lombok.Setter;
 @Getter
 @Setter
 @NoArgsConstructor
-public class ResponseDto {
-
+public class LogLineDto {
+	private String date;
+	private String headers;
 }
